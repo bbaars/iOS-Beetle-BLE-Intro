@@ -68,6 +68,7 @@ class MainViewController: UIViewController, CBCentralManagerDelegate, CBPeripher
             rightButton.setTitleColor(UIColor.white, for: [])
             rightButton.frame = CGRect(origin: CGPoint(x: 0, y: 0), size: CGSize(width: 100, height: 30))
             rightButton.addTarget(self, action: #selector(self.disconnectButtonPressed), for: .touchUpInside)
+            sendButton.setTitle("Turn LED On", for: .normal)
         }
         
         let rightBarButton = UIBarButtonItem()
@@ -226,6 +227,7 @@ class MainViewController: UIViewController, CBCentralManagerDelegate, CBPeripher
             let data = helloWorld.data(using: String.Encoding.utf8)
             mainPeripheral?.writeValue(data!, for: mainCharacterisitc!, type: CBCharacteristicWriteType.withoutResponse)
         } else {
+            performSegue(withIdentifier: "scan-segue", sender: nil)
             print("Havent discovered device yet")
         }
     }
