@@ -7,89 +7,128 @@
 //
 
 import UIKit
+import CoreBluetooth
 
-class ScanTableViewController: UITableViewController {
+class ScanTableViewController: UITableViewController, CBCentralManagerDelegate {
+    
+    // Variables
+    
+    var peripherals: [CBPeripheral] = []
+    var manager: CBCentralManager? = nil
+    var parentView: MainViewController? = nil
+    
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        navigationController?.navigationBar.tintColor = UIColor.white
 
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
-
-        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-        // self.navigationItem.rightBarButtonItem = self.editButtonItem
     }
-
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-        // Dispose of any resources that can be recreated.
+    
+    override func viewDidAppear(_ animated: Bool) {
+        scanBLEDevices()
     }
+    
+    func scanBLEDevices() {
+        
+        // Scan for DFRobot BLUNO Devices that match our BLEService variables
+        manager?.scanForPeripherals(withServices: [CBUUID.init(string: parentView!.BLEService)], options: nil)
+        
+        // stop our scan after 3 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0, execute: {
+            self.stopScanningForBLEDevices()
+        })
+    }
+    
+    func stopScanningForBLEDevices() {
+        manager?.stopScan()
+    }
+    
+    // MARK: - Protocols for the CBCentralManagerDelegate
+    
+    func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
+        
+        // if the peripheral isn't already in our array or peripherals
+        if !peripherals.contains(peripheral) {
+            peripherals.append(peripheral)
+        }
+        
+        tableView.reloadData()
+    }
+    
+    func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        print(central.state)
+    }
+    
+    func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+        
+        // pass our peripheral reference back to our parent view
+        parentView?.mainPeripheral = peripheral
+        peripheral.delegate = parentView
+        peripheral.discoverServices(nil)
+        
+        // set the managers delegate view to parent so it can call relevant disconnect methods
+        manager?.delegate = parentView
+        parentView?.customizeNavBar()
+        
+        if let controller = self.navigationController {
+            controller.popViewController(animated: true)
+        }
+        
+        print("Successfully connected to device: " + peripheral.name!)
+    }
+    
+    func centralManager(_ central: CBCentralManager, didFailToConnect peripheral: CBPeripheral, error: Error?) {
+        print(error.debugDescription)
+    }
+    
+    
 
     // MARK: - Table view data source
 
     override func numberOfSections(in tableView: UITableView) -> Int {
         // #warning Incomplete implementation, return the number of sections
-        return 0
+        return 1
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         // #warning Incomplete implementation, return the number of rows
-        return 0
+        return peripherals.count
     }
 
-    /*
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "reuseIdentifier", for: indexPath)
+        let cell = tableView.dequeueReusableCell(withIdentifier: "scanTableCell", for: indexPath)
 
-        // Configure the cell...
+        let peripheral = peripherals[indexPath.row]
+        cell.textLabel?.text = peripheral.name
 
         return cell
     }
-    */
-
-    /*
-    // Override to support conditional editing of the table view.
-    override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the specified item to be editable.
-        return true
+    
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+        let peripheral = peripherals[indexPath.row]
+        
+        // connect when the user selected the device
+        manager?.connect(peripheral, options: nil)
     }
-    */
-
-    /*
-    // Override to support editing the table view.
-    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            // Delete the row from the data source
-            tableView.deleteRows(at: [indexPath], with: .fade)
-        } else if editingStyle == .insert {
-            // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-        }    
-    }
-    */
-
-    /*
-    // Override to support rearranging the table view.
-    override func tableView(_ tableView: UITableView, moveRowAt fromIndexPath: IndexPath, to: IndexPath) {
-
-    }
-    */
-
-    /*
-    // Override to support conditional rearranging of the table view.
-    override func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the item to be re-orderable.
-        return true
-    }
-    */
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destinationViewController.
-        // Pass the selected object to the new view controller.
-    }
-    */
-
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
